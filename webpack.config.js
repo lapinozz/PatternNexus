@@ -8,6 +8,7 @@ const WorkboxPlugin = require("workbox-webpack-plugin");
 module.exports = function(_env, argv) {
   const isProduction = argv.mode === "production";
   const isDevelopment = !isProduction;
+  const isDevServer = !!_env.dev;
 
   return {
     devtool: isDevelopment && "cheap-module-source-map",
@@ -15,7 +16,7 @@ module.exports = function(_env, argv) {
     output: {
       path: path.resolve(__dirname, "dist"),
       filename: "assets/js/[name].[contenthash:8].js",
-      publicPath: "/"
+      publicPath: isDevServer ? "/" : "./"
     },
     module: {
       rules: [
