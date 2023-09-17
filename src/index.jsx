@@ -5,6 +5,10 @@ import { createRoot } from 'react-dom/client';
 import '../styles/index.scss';
 
 import Vec from './utils/vec';
+import hookify from './utils/hookify';
+import useGlobalDOMEvents from './utils/useGlobalDOMEvents';
+
+import Pattern from './pattern';
 
 const PointView = ({x,y}) => {
 	return (
@@ -12,44 +16,15 @@ const PointView = ({x,y}) => {
 	);
 }
 
-export default function useGlobalDOMEvents(props) {
-	const eventsRef = useRef({});
-	const events = eventsRef.current;
+const usePattern = hookify(Pattern);
 
-	useEffect(() => {
-		for (let [key, func] of Object.entries(props))
-		{
-			events[key] = {
-				currentCallback: func,
-				domCallback: (e) =>
-				{
-					events[key].currentCallback(e);
-				}
-			};
-
-			window.addEventListener(key, events[key].domCallback, false);
-		}
-
-		return () => {
-			for (let [key, event] of Object.entries(events)) {
-				window.removeEventListener(key, event.domCallback, false);
-			}
-		};
-	}, []);
-
-	for (let [key, evt] of Object.entries(events))
-	{
-		evt.currentCallback = props[key];
-	}
-}
-
-
-const SvgView = () => {
+const SvgView = (props) => {
 	const [view, setView] = useState({zoom: 2, center: new Vec(50, 50)});
 	const [size, setSize] = useState(new Vec(1200, 800));
 
 	const [dragging, setDragging] = useState(null);
-	//const dragging = draggingRef.current;
+
+	const pattern = usePattern(props.pattern);
 
 	const svgRef = useRef(null);
 
@@ -130,16 +105,25 @@ const SvgView = () => {
 			viewBox={viewBoxStr} 
 			height={size.y} 
 			width={size.x} >
-			<PointView x={50} y={50}/>
+
+			{
+				pattern.getPoints().map(pt => (<PointView key={pt.id} x={pt.pos.x} y={pt.pos.y}/>))
+			}
+			
 		</svg> 
 	);
 }
+
+const pattern = new Pattern();
+
+pattern.addPoint(new Vec())
+pattern.addPoint(new Vec(100, 50))
 
 const App = () => {
 	return (
 		<div className="container">
 			<div className="header">
-				<SvgView/>
+				<SvgView pattern={pattern}/>
 			</div>
 		</div>
 	);
