@@ -6,47 +6,44 @@ import '../styles/index.scss';
 
 import Vec from './utils/vec';
 import hookify from './utils/hookify';
-import useGlobalDOMEvents from './utils/useGlobalDOMEvents';
+import useDragger from './utils/dragger';
 
 import Pattern from './pattern';
 
 const PointView = ({x,y}) => {
 	return (
-		<circle cx={x} cy={y} r="40" stroke="black" strokeWidth="3" fill="red" />
+		<circle cx={x} cy={y} r="2" stroke="black" strokeWidth="0.5" fill="gray" />
 	);
 }
 
 const usePattern = hookify(Pattern);
 
-const SvgView = (props) => {
+const PatternEditor = (props) => {
 	const [view, setView] = useState({zoom: 2, center: new Vec(50, 50)});
 	const [size, setSize] = useState(new Vec(1200, 800));
-
-	const [dragging, setDragging] = useState(null);
 
 	const pattern = usePattern(props.pattern);
 
 	const svgRef = useRef(null);
 
-	const eventToPoint = (e) => {
+	const screenPosToSvgPos = (pos) => {
 		const pt = svgRef.current.createSVGPoint();
-		pt.x = e.clientX;
-		pt.y = e.clientY;
+		pt.x = pos.x;
+		pt.y = pos.y;
 		return new Vec(pt.matrixTransform(svgRef.current.getScreenCTM().inverse()));
 	}
 
-	const handleScroll = (e) => {
-		if(dragging)
-		{
-			return;
-		}
+	const eventToSvgPos = (e) => {
+		return screenPosToSvgPos({x: e.clientX, y: e.clientY});
+	}
 
+	const handleScroll = (e) => {
 		let {zoom, center} = view;
 
 		const ratio = e.deltaY < 0 ? 1.1 : 0.9;
 		const newZoom = zoom * ratio;
 
-		const mousePos = eventToPoint(e);
+		const mousePos = eventToSvgPos(e);
 
 		center = mousePos.sub(mousePos.sub(center).div(ratio));
 
@@ -56,43 +53,29 @@ const SvgView = (props) => {
 		});
 	};
 
-	const handleMouseUp = (e) => {
-		if(!dragging)
-		{
-			return;
-		}
-
-		setDragging(null);
+	const onDragEnd = (e) => {
 	};
 
-	const handleMouseMove = (e) => {
-		if(!dragging)
-		{
-			return;
-		}
-
-		const currentPoint = new Vec(e.clientX, e.clientY);
-		const center = dragging.startViewPoint.add(dragging.startScreenPoint.sub(currentPoint).div(view.zoom));
+	const onDrag = (e, {delta}) => {
+		const center = view.center.sub(delta.div(view.zoom));
 		setView({
 			...view,
 			center
 		});
 	};
 
-	const handleMouseDown = (e) => {
-		event.preventDefault();
-		event.stopPropagation();
-
-		setDragging({
-			startViewPoint: view.center.clone(),
-			startScreenPoint: new Vec(e.clientX, e.clientY)
-		});
+	const onDragStart = (e) => {
 	};
 
-	useGlobalDOMEvents({
-		mouseup: handleMouseUp,
-		mousemove: handleMouseMove,
-	});
+	const onClick = (e, {currentPos}) => {
+		pattern.addPoint(screenPosToSvgPos(currentPos));
+	};
+
+	const onDbClick = (e, {currentPos}) => {
+		pattern.addPoint(screenPosToSvgPos(currentPos).add(50));
+	};
+
+	const {dragger, handleMouseDown} = useDragger({onDragStart, onDrag, onDragEnd, onClick, onDbClick});
 
 	const viewBoxSize = size.div(view.zoom);
 	const viewBoxStr = `${view.center.x - viewBoxSize.x / 2} ${view.center.y - viewBoxSize.y / 2} ${viewBoxSize.x} ${viewBoxSize.y}`;
@@ -122,9 +105,7 @@ pattern.addPoint(new Vec(100, 50))
 const App = () => {
 	return (
 		<div className="container">
-			<div className="header">
-				<SvgView pattern={pattern}/>
-			</div>
+			<PatternEditor pattern={pattern}/>
 		</div>
 	);
 }

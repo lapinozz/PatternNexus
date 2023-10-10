@@ -51,7 +51,7 @@ const hookify = (Class, mutableTable = {}) => {
 
 		functions[funcName] = function (...args) {
 			const instance = this.instanceHolder.instance;
-			const result = func.apply(instance, ...args);
+			const result = func.apply(instance, args);
 
 			if(isMutating)
 			{
